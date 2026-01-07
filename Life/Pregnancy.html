@@ -57,11 +57,13 @@ input,select{
   color:#111;
 }
 
+/* DATE PICKER TEXT FIX */
 input[type="date"]{
-  appearance:auto;
-  -webkit-appearance:auto;
   color:#111;
+  -webkit-text-fill-color:#111;
 }
+input[type="date"]::-webkit-datetime-edit{color:#111}
+input[type="date"]::-webkit-calendar-picker-indicator{opacity:1}
 
 button{
   width:100%;
@@ -74,19 +76,22 @@ button{
   cursor:pointer;
 }
 
+.print-btn{
+  margin-top:16px;
+  background:#0f172a;
+}
+
 .error{color:#dc2626;font-weight:600;margin-top:10px}
 
 table{
   width:100%;
   border-collapse:collapse;
   font-size:14px;
-  min-width:720px;
 }
 
 th,td{
   padding:10px;
   border-bottom:1px solid #eee;
-  vertical-align:middle;
   text-align:center;
 }
 
@@ -97,9 +102,6 @@ th:nth-child(2),td:nth-child(2){
 
 thead th{
   background:#f8fafc;
-  position:sticky;
-  top:0;
-  z-index:2;
 }
 
 .first{background:var(--first)}
@@ -116,13 +118,33 @@ thead th{
   line-height:1.6;
 }
 
-canvas{max-width:100%;margin-top:20px}
-
-/* MOBILE TABLE FIX */
+/* 📱 MOBILE → VERTICAL TABLE */
 @media (max-width:768px){
-  table{font-size:13px}
-  th,td{white-space:nowrap}
-  td:nth-child(2),td:nth-child(5){white-space:normal}
+  table,thead,tbody,th,td,tr{display:block}
+  thead{display:none}
+  tr{
+    margin-bottom:16px;
+    border-radius:12px;
+    overflow:hidden;
+  }
+  td{
+    display:flex;
+    justify-content:space-between;
+    text-align:right;
+    padding:10px 14px;
+  }
+  td::before{
+    content:attr(data-label);
+    font-weight:600;
+    text-align:left;
+  }
+}
+
+/* 🖨️ PRINT */
+@media print{
+  body{background:#fff}
+  button,.grid,.error{display:none}
+  .card{box-shadow:none;border:1px solid #ccc}
 }
 </style>
 </head>
@@ -164,7 +186,7 @@ canvas{max-width:100%;margin-top:20px}
 <div class="card">
 <div id="summary">Result = —</div>
 <div id="insight" class="insight"></div>
-<canvas id="weightChart" height="140"></canvas>
+<button class="print-btn" onclick="window.print()">Print Pregnancy Report</button>
 </div>
 
 <br>
@@ -172,7 +194,6 @@ canvas{max-width:100%;margin-top:20px}
 <!-- TIMELINE -->
 <div class="card">
 <h2>Pregnancy Week-by-Week Timeline</h2>
-<div style="overflow-x:auto">
 <table>
 <thead>
 <tr>
@@ -185,7 +206,6 @@ canvas{max-width:100%;margin-top:20px}
 </thead>
 <tbody id="timeline"></tbody>
 </table>
-</div>
 </div>
 
 </div>
@@ -265,8 +285,6 @@ Underweight: 12.5–18 kg · Normal: 11.5–16 kg · Overweight: 7–11.5 kg · 
 <strong>Medical disclaimer:</strong> Results are estimates. Ultrasound dating by a healthcare professional is the most accurate.
 `;
 
-drawWeightChart();
-
 for(let w=1;w<=42;w++){
 const s=addDays(lmp,(w-1)*7),e=addDays(s,6);
 const tr=w<=13?"First":w<=27?"Second":"Third";
@@ -274,25 +292,13 @@ const cls=(w===weeks?"today ":"")+(tr==="First"?"first":tr==="Second"?"second":"
 
 timeline.innerHTML+=`
 <tr class="${cls}">
-<td>Week ${w}</td>
-<td>${fmt(s)} – ${fmt(e)}</td>
-<td>${tr}</td>
-<td>${babySize[w]?babySize[w].join(", "):"—"}</td>
-<td>${milestones[w]||""}</td>
+<td data-label="Week">Week ${w}</td>
+<td data-label="Date Range">${fmt(s)} – ${fmt(e)}</td>
+<td data-label="Trimester">${tr}</td>
+<td data-label="Baby Size">${babySize[w]?babySize[w].join(", "):"—"}</td>
+<td data-label="Milestones">${milestones[w]||""}</td>
 </tr>`;
 }
-}
-
-function drawWeightChart(){
-const c=document.getElementById("weightChart");
-const ctx=c.getContext("2d");
-ctx.clearRect(0,0,c.width,c.height);
-ctx.strokeStyle="#2563eb";
-ctx.beginPath();
-ctx.moveTo(20,120);
-ctx.lineTo(320,40);
-ctx.stroke();
-ctx.fillText("Weight gain trend (BMI-based estimate)",20,20);
 }
 </script>
 
