@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pregnancy Calculator – Accurate Due Date & Weeks</title>
+<title>Pregnancy Calculator – Due Date, Weeks & Timeline</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -13,6 +13,7 @@
   --radius:16px;
   --text:#1f2937;
   --muted:#6b7280;
+  --highlight:#e0f2fe;
 }
 *{box-sizing:border-box}
 body{
@@ -21,7 +22,7 @@ body{
   background:var(--bg);
   color:var(--text);
 }
-.container{max-width:1100px;margin:auto;padding:20px}
+.container{max-width:1200px;margin:auto;padding:20px}
 .card{
   background:var(--card);
   border-radius:var(--radius);
@@ -33,7 +34,7 @@ small{color:var(--muted)}
 
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
   gap:20px;
 }
 
@@ -65,11 +66,15 @@ button{
 table{
   width:100%;
   border-collapse:collapse;
+  font-size:14px;
 }
-td{
-  padding:10px 6px;
+th,td{
+  padding:10px;
   border-bottom:1px solid #eee;
+  text-align:left;
 }
+th{background:#f8fafc}
+.today{background:var(--highlight)}
 
 .insight{
   margin-top:18px;
@@ -79,79 +84,92 @@ td{
   font-size:14px;
   line-height:1.6;
 }
-.insight strong{color:#111}
 </style>
 </head>
 
 <body>
 <div class="container">
 
-<!-- INPUT CARD -->
+<!-- INPUT -->
 <div class="card">
 <h1>Pregnancy Calculator</h1>
-<small>Medical-grade accuracy · Due date · Weeks & trimesters</small>
+<small>Due date · Weeks & days · Trimesters · Timeline</small>
 <br><br>
 
 <div class="grid">
   <select id="method">
     <option value="lmp">Last Menstrual Period (LMP)</option>
-    <option value="duedate">Known Due Date</option>
+    <option value="due">Known Due Date</option>
   </select>
-
   <input id="dateInput" type="date">
 </div>
 
 <br>
-<button onclick="calculatePregnancy()">Calculate</button>
+<button onclick="calculate()">Calculate Pregnancy</button>
 <div id="error" class="error"></div>
 </div>
 
 <br>
 
-<!-- RESULT CARD -->
-<div class="grid">
-  <div class="card">
-    <div id="output">Result = —</div>
+<!-- SUMMARY -->
+<div class="card">
+<div id="summary">Result = —</div>
+<div id="insight" class="insight"></div>
+</div>
 
-    <div id="insight" class="insight"></div>
-  </div>
+<br>
+
+<!-- TIMELINE -->
+<div class="card">
+<h2>Pregnancy Week-by-Week Timeline</h2>
+<div style="overflow-x:auto">
+<table id="timeline">
+<thead>
+<tr>
+<th>Week</th>
+<th>Date Range</th>
+<th>Trimester</th>
+<th>Important Milestones</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
 </div>
 
 </div>
 
 <script>
-function addDays(date, days){
-  let d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
+function addDays(d,days){
+  const x=new Date(d);
+  x.setDate(x.getDate()+days);
+  return x;
+}
+function format(d){
+  return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
 }
 
-function formatDate(d){
-  return d.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
-}
-
-function calculatePregnancy(){
+function calculate(){
   error.innerText="";
-  output.innerHTML="Result = —";
+  summary.innerHTML="";
   insight.innerHTML="";
-
-  let method = methodSel.value;
-  let inputDate = new Date(dateInput.value);
+  timeline.querySelector("tbody").innerHTML="";
 
   if(!dateInput.value){
     error.innerText="Please select a valid date.";
     return;
   }
 
-  let today = new Date();
-  let lmp, dueDate;
+  const input=new Date(dateInput.value);
+  const today=new Date();
+  let lmp, due;
 
-  if(method==="lmp"){
-    lmp = inputDate;
-    dueDate = addDays(lmp, 280); // 40 weeks
+  if(method.value==="lmp"){
+    lmp=input;
+    due=addDays(lmp,280);
   }else{
-    dueDate = inputDate;
-    lmp = addDays(dueDate, -280);
+    due=input;
+    lmp=addDays(due,-280);
   }
 
   if(today < lmp){
@@ -159,40 +177,73 @@ function calculatePregnancy(){
     return;
   }
 
-  let daysPregnant = Math.floor((today - lmp) / (1000*60*60*24));
-  let weeks = Math.floor(daysPregnant / 7);
-  let days = daysPregnant % 7;
+  const totalDays=Math.floor((today-lmp)/(1000*60*60*24));
+  const cappedDays=Math.min(totalDays,294); // up to 42 weeks
+  const weeks=Math.floor(cappedDays/7);
+  const days=cappedDays%7;
 
-  let trimester =
-    weeks < 13 ? "First trimester" :
-    weeks < 27 ? "Second trimester" :
-    "Third trimester";
+  const months=Math.floor(cappedDays/30);
+  const remDays=cappedDays%30;
 
-  let conceptionStart = addDays(lmp, 10);
-  let conceptionEnd = addDays(lmp, 14);
+  let trimester;
+  if(weeks<=13) trimester="First";
+  else if(weeks<=27) trimester="Second";
+  else trimester="Third";
 
-  output.innerHTML = `
-  <table>
-    <tr><td><b>Estimated Due Date</b></td><td>${formatDate(dueDate)}</td></tr>
-    <tr><td>Gestational Age</td><td>${weeks} weeks ${days} days</td></tr>
-    <tr><td>Current Trimester</td><td>${trimester}</td></tr>
-    <tr><td>Estimated Conception Window</td><td>${formatDate(conceptionStart)} – ${formatDate(conceptionEnd)}</td></tr>
-    <tr><td>Pregnancy Progress</td><td>${Math.min((weeks/40*100),100).toFixed(1)}%</td></tr>
-  </table>`;
+  const progress=Math.min((cappedDays/280)*100,100).toFixed(0);
+  const conception=addDays(lmp,14);
 
-  insight.innerHTML = `
-  <strong>How to understand this:</strong><br>
-  Pregnancy is calculated as a 40-week (280-day) period starting from the first day of the last menstrual period (LMP), which is the medical standard used worldwide.
-  <br><br>
-  <strong>Important:</strong> Ovulation, implantation, and cycle length can vary. Ultrasound dating by a healthcare provider is the most accurate method.
+  summary.innerHTML=`
+    <p><b>You are currently at week ${weeks}</b> (${weeks} weeks ${days} days or ${months} months ${remDays} days).</p>
+    <p>You are in the <b>${trimester} trimester</b>.</p>
+    <p>Your baby was likely conceived around <b>${format(conception)}</b>.</p>
+    <p>Estimated due date: <b>${format(due)}</b></p>
+    <p>Pregnancy progress: <b>${progress}%</b></p>
   `;
+
+  insight.innerHTML=`
+    <strong>Medical disclaimer:</strong><br>
+    This calculator is based on a standard 28-day cycle and single pregnancy.
+    Results may differ for twins, IVF pregnancies, or irregular cycles.
+    Ultrasound dating by a healthcare professional is the most accurate.
+  `;
+
+  const milestones={
+    3:"Baby conceived",
+    4:"Pregnancy test positive",
+    6:"Heartbeat detectable by ultrasound",
+    13:"Miscarriage risk decreases",
+    18:"Baby movements felt",
+    23:"Premature baby may survive",
+    28:"Baby can breathe",
+    40:"Full term"
+  };
+
+  for(let w=1;w<=42;w++){
+    const start=addDays(lmp,(w-1)*7);
+    const end=addDays(start,6);
+    const tri=w<=13?"First trimester":w<=27?"Second trimester":"Third trimester";
+    const note=milestones[w]||"";
+
+    const tr=document.createElement("tr");
+    if(w===weeks) tr.className="today";
+
+    tr.innerHTML=`
+      <td>Week ${w}</td>
+      <td>${format(start)} – ${format(end)}</td>
+      <td>${tri}</td>
+      <td>${note}</td>
+    `;
+    timeline.querySelector("tbody").appendChild(tr);
+  }
 }
 
-const methodSel = document.getElementById("method");
-const dateInput = document.getElementById("dateInput");
-const error = document.getElementById("error");
-const output = document.getElementById("output");
-const insight = document.getElementById("insight");
+const method=document.getElementById("method");
+const dateInput=document.getElementById("dateInput");
+const error=document.getElementById("error");
+const summary=document.getElementById("summary");
+const insight=document.getElementById("insight");
+const timeline=document.getElementById("timeline");
 </script>
 
 </body>
