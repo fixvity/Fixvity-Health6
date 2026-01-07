@@ -6,6 +6,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
+  .field{
+  display:flex;
+  flex-direction:column;
+}
+
+.field label{
+  font-size:14px;
+  color:#374151;
+  margin-bottom:6px;
+}
+
+.field select,
+.field input{
+  height:52px;
+  padding:12px 14px;
+  font-size:16px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  background:#fff;
+}
 :root{
   --primary:#2563eb;
   --bg:#f4f7fb;
@@ -159,25 +179,35 @@ thead th{
 <br><br>
 
 <div class="grid">
-  <select id="method">
-    <option value="due">Known Due Date</option>
-    <option value="lmp">Last Menstrual Period (LMP)</option>
-    <option value="conception">Conception Date</option>
-    <option value="ultrasound">Ultrasound Dating</option>
-    <option value="ivf">IVF Transfer Date</option>
-  </select>
 
-  <div>
-  <label for="dateInput" style="font-size:14px;color:#374151;margin-bottom:6px;display:block">
-    Select Date
-  </label>
-  <input id="dateInput" type="date">
+  <!-- FIRST BOX -->
+  <div class="field">
+    <label for="method">Calculate option</label>
+    <select id="method">
+      <option value="due">Known Due Date</option>
+      <option value="lmp">Last Menstrual Period (LMP)</option>
+      <option value="conception">Conception Date</option>
+      <option value="ultrasound">Ultrasound Dating</option>
+      <option value="ivf">IVF Transfer Date</option>
+    </select>
   </div>
 
-  <select id="extra" style="display:none">
-    <option value="5">5-day embryo</option>
-    <option value="3">3-day embryo</option>
-  </select>
+  <!-- SECOND BOX -->
+  <div class="field">
+    <label for="dateInput">Your due date</label>
+    <input id="dateInput" type="date">
+  </div>
+
+  <!-- IVF EXTRA (unchanged) -->
+  <div class="field" id="extra" style="display:none">
+    <label>Embryo type</label>
+    <select>
+      <option value="5">5-day embryo</option>
+      <option value="3">3-day embryo</option>
+    </select>
+  </div>
+
+</div>
 </div>
 
 <br>
