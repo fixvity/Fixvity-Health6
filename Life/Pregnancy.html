@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Pregnancy Calculator – Due Date, Weeks & Timeline</title>
+<title>Pregnancy Calculator – Due Date, Baby Size & Timeline</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <style>
@@ -34,8 +34,8 @@ small{color:var(--muted)}
 
 .grid{
   display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:20px;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:16px;
 }
 
 input,select{
@@ -57,11 +57,7 @@ button{
   cursor:pointer;
 }
 
-.error{
-  color:#dc2626;
-  font-weight:600;
-  margin-top:10px;
-}
+.error{color:#dc2626;font-weight:600;margin-top:10px}
 
 table{
   width:100%;
@@ -71,13 +67,12 @@ table{
 th,td{
   padding:10px;
   border-bottom:1px solid #eee;
-  text-align:left;
 }
 th{background:#f8fafc}
 .today{background:var(--highlight)}
 
 .insight{
-  margin-top:18px;
+  margin-top:16px;
   padding:16px;
   border-radius:12px;
   background:#f1f5f9;
@@ -90,18 +85,26 @@ th{background:#f8fafc}
 <body>
 <div class="container">
 
-<!-- INPUT -->
 <div class="card">
 <h1>Pregnancy Calculator</h1>
-<small>Due date · Weeks & days · Trimesters · Timeline</small>
+<small>Due date · Weeks & days · Baby size · Weight gain · Timeline</small>
 <br><br>
 
 <div class="grid">
   <select id="method">
-    <option value="lmp">Last Menstrual Period (LMP)</option>
     <option value="due">Known Due Date</option>
+    <option value="lmp">Last Menstrual Period (LMP)</option>
+    <option value="conception">Conception Date</option>
+    <option value="ultrasound">Ultrasound Dating</option>
+    <option value="ivf">IVF Transfer Date</option>
   </select>
+
   <input id="dateInput" type="date">
+
+  <select id="extra" style="display:none">
+    <option value="5">5-day embryo</option>
+    <option value="3">3-day embryo</option>
+  </select>
 </div>
 
 <br>
@@ -111,7 +114,6 @@ th{background:#f8fafc}
 
 <br>
 
-<!-- SUMMARY -->
 <div class="card">
 <div id="summary">Result = —</div>
 <div id="insight" class="insight"></div>
@@ -119,7 +121,6 @@ th{background:#f8fafc}
 
 <br>
 
-<!-- TIMELINE -->
 <div class="card">
 <h2>Pregnancy Week-by-Week Timeline</h2>
 <div style="overflow-x:auto">
@@ -129,6 +130,7 @@ th{background:#f8fafc}
 <th>Week</th>
 <th>Date Range</th>
 <th>Trimester</th>
+<th>Baby Size</th>
 <th>Important Milestones</th>
 </tr>
 </thead>
@@ -140,110 +142,98 @@ th{background:#f8fafc}
 </div>
 
 <script>
-function addDays(d,days){
-  const x=new Date(d);
-  x.setDate(x.getDate()+days);
-  return x;
-}
-function format(d){
-  return d.toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"});
-}
+const MS = 86400000;
+
+const babySize = [
+  null,
+  ["0.1 in","<1 g"],["0.1 in","<1 g"],["0.2 in","<1 g"],
+  ["0.3 in","1 g"],["0.5 in","2 g"],["0.6 in","4 g"],
+  ["0.9 in","7 g"],["1.2 in","14 g"],["1.6 in","25 g"],
+  ["2.1 in","45 g"],["2.9 in","60 g"],["3.4 in","90 g"],
+  ["4.6 in","120 g"],["5.1 in","170 g"],["6.0 in","200 g"],
+  ["6.7 in","250 g"],["7.4 in","300 g"],["8.7 in","350 g"],
+  ["10.1 in","400 g"],["10.5 in","500 g"],["11.2 in","600 g"],
+  ["11.8 in","700 g"],["12.2 in","800 g"],["13.4 in","900 g"],
+  ["13.6 in","1 kg"],["14.0 in","1.1 kg"],["14.8 in","1.3 kg"],
+  ["15.2 in","1.5 kg"],["15.7 in","1.7 kg"],["16.5 in","1.9 kg"],
+  ["17.2 in","2.1 kg"],["17.7 in","2.4 kg"],["18.2 in","2.6 kg"],
+  ["18.7 in","2.9 kg"],["19.2 in","3.1 kg"],["19.7 in","3.3 kg"],
+  ["20.2 in","3.4 kg"],["20.7 in","3.5 kg"],["21.0 in","3.6 kg"]
+];
+
+const milestones = {
+  3:"Baby conceived",
+  4:"Pregnancy test positive",
+  6:"Heartbeat detectable by ultrasound",
+  13:"Miscarriage risk decreases",
+  18:"Baby movements felt",
+  23:"Premature baby may survive",
+  28:"Baby can breathe",
+  40:"Full term"
+};
+
+method.onchange = () => {
+  extra.style.display = method.value === "ivf" ? "block" : "none";
+};
+
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function fmt(d){return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
 
 function calculate(){
-  error.innerText="";
-  summary.innerHTML="";
-  insight.innerHTML="";
+  error.textContent="";
   timeline.querySelector("tbody").innerHTML="";
+  if(!dateInput.value){error.textContent="Please select a date.";return;}
 
-  if(!dateInput.value){
-    error.innerText="Please select a valid date.";
-    return;
-  }
+  const base=new Date(dateInput.value+"T00:00:00");
+  let lmp;
 
-  const input=new Date(dateInput.value);
+  if(method.value==="due") lmp=addDays(base,-280);
+  if(method.value==="lmp") lmp=base;
+  if(method.value==="conception") lmp=addDays(base,-14);
+  if(method.value==="ultrasound") lmp=addDays(base,-70);
+  if(method.value==="ivf") lmp=addDays(base,-(extra.value==="5"?261:263));
+
   const today=new Date();
-  let lmp, due;
+  if(today<lmp){error.textContent="Pregnancy has not started yet.";return;}
 
-  if(method.value==="lmp"){
-    lmp=input;
-    due=addDays(lmp,280);
-  }else{
-    due=input;
-    lmp=addDays(due,-280);
-  }
+  const days=Math.min(Math.floor((today-lmp)/MS),294);
+  const weeks=Math.max(1,Math.floor(days/7));
+  const rem=days%7;
 
-  if(today < lmp){
-    error.innerText="The selected date indicates pregnancy has not started yet.";
-    return;
-  }
-
-  const totalDays=Math.floor((today-lmp)/(1000*60*60*24));
-  const cappedDays=Math.min(totalDays,294); // up to 42 weeks
-  const weeks=Math.floor(cappedDays/7);
-  const days=cappedDays%7;
-
-  const months=Math.floor(cappedDays/30);
-  const remDays=cappedDays%30;
-
-  let trimester;
-  if(weeks<=13) trimester="First";
-  else if(weeks<=27) trimester="Second";
-  else trimester="Third";
-
-  const progress=Math.min((cappedDays/280)*100,100).toFixed(0);
-  const conception=addDays(lmp,14);
+  const trimester = weeks<=13?"First":weeks<=27?"Second":"Third";
+  const due=addDays(lmp,280);
+  const progress=Math.min((days/280)*100,100).toFixed(0);
+  const size=babySize[weeks]||["—","—"];
 
   summary.innerHTML=`
-    <p><b>You are currently at week ${weeks}</b> (${weeks} weeks ${days} days or ${months} months ${remDays} days).</p>
-    <p>You are in the <b>${trimester} trimester</b>.</p>
-    <p>Your baby was likely conceived around <b>${format(conception)}</b>.</p>
-    <p>Estimated due date: <b>${format(due)}</b></p>
+    <p><b>Week ${weeks}</b> (${weeks} weeks ${rem} days)</p>
+    <p>Trimester: <b>${trimester}</b></p>
+    <p>Estimated due date: <b>${fmt(due)}</b></p>
     <p>Pregnancy progress: <b>${progress}%</b></p>
+    <p>Baby size: <b>${size[0]}</b>, weight <b>${size[1]}</b></p>
   `;
 
   insight.innerHTML=`
-    <strong>Medical disclaimer:</strong><br>
-    This calculator is based on a standard 28-day cycle and single pregnancy.
-    Results may differ for twins, IVF pregnancies, or irregular cycles.
-    Ultrasound dating by a healthcare professional is the most accurate.
+    <strong>Recommended weight gain (singleton pregnancy):</strong><br>
+    Underweight: 12.5–18 kg · Normal: 11.5–16 kg · Overweight: 7–11.5 kg · Obese: 5–9 kg
+    <br><br>
+    <strong>Medical disclaimer:</strong> Results are estimates. Ultrasound dating by a healthcare professional is the most accurate.
   `;
 
-  const milestones={
-    3:"Baby conceived",
-    4:"Pregnancy test positive",
-    6:"Heartbeat detectable by ultrasound",
-    13:"Miscarriage risk decreases",
-    18:"Baby movements felt",
-    23:"Premature baby may survive",
-    28:"Baby can breathe",
-    40:"Full term"
-  };
-
   for(let w=1;w<=42;w++){
-    const start=addDays(lmp,(w-1)*7);
-    const end=addDays(start,6);
-    const tri=w<=13?"First trimester":w<=27?"Second trimester":"Third trimester";
-    const note=milestones[w]||"";
-
-    const tr=document.createElement("tr");
-    if(w===weeks) tr.className="today";
-
-    tr.innerHTML=`
+    const s=addDays(lmp,(w-1)*7),e=addDays(s,6);
+    const tr=w<=13?"First":w<=27?"Second":"Third";
+    const row=document.createElement("tr");
+    if(w===weeks) row.className="today";
+    row.innerHTML=`
       <td>Week ${w}</td>
-      <td>${format(start)} – ${format(end)}</td>
-      <td>${tri}</td>
-      <td>${note}</td>
-    `;
-    timeline.querySelector("tbody").appendChild(tr);
+      <td>${fmt(s)} – ${fmt(e)}</td>
+      <td>${tr}</td>
+      <td>${babySize[w]?babySize[w].join(", "):"—"}</td>
+      <td>${milestones[w]||""}</td>`;
+    timeline.querySelector("tbody").appendChild(row);
   }
 }
-
-const method=document.getElementById("method");
-const dateInput=document.getElementById("dateInput");
-const error=document.getElementById("error");
-const summary=document.getElementById("summary");
-const insight=document.getElementById("insight");
-const timeline=document.getElementById("timeline");
 </script>
 
 </body>
