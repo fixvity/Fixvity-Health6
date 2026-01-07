@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pregnancy Calculator – Accurate Due Date & Weeks</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+:root{
+  --primary:#2563eb;
+  --bg:#f4f7fb;
+  --card:#ffffff;
+  --radius:16px;
+  --text:#1f2937;
+  --muted:#6b7280;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Inter,system-ui,Arial;
+  background:var(--bg);
+  color:var(--text);
+}
+.container{max-width:1100px;margin:auto;padding:20px}
+.card{
+  background:var(--card);
+  border-radius:var(--radius);
+  padding:28px;
+  box-shadow:0 14px 36px rgba(0,0,0,.08);
+}
+h1{margin:0;color:var(--primary)}
+small{color:var(--muted)}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:20px;
+}
+
+input,select{
+  width:100%;
+  padding:14px;
+  font-size:16px;
+  border-radius:10px;
+  border:1px solid #ddd;
+}
+
+button{
+  width:100%;
+  padding:18px;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:14px;
+  font-size:18px;
+  cursor:pointer;
+}
+
+.error{
+  color:#dc2626;
+  font-weight:600;
+  margin-top:10px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+td{
+  padding:10px 6px;
+  border-bottom:1px solid #eee;
+}
+
+.insight{
+  margin-top:18px;
+  padding:16px;
+  border-radius:12px;
+  background:#f1f5f9;
+  font-size:14px;
+  line-height:1.6;
+}
+.insight strong{color:#111}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<!-- INPUT CARD -->
+<div class="card">
+<h1>Pregnancy Calculator</h1>
+<small>Medical-grade accuracy · Due date · Weeks & trimesters</small>
+<br><br>
+
+<div class="grid">
+  <select id="method">
+    <option value="lmp">Last Menstrual Period (LMP)</option>
+    <option value="duedate">Known Due Date</option>
+  </select>
+
+  <input id="dateInput" type="date">
+</div>
+
+<br>
+<button onclick="calculatePregnancy()">Calculate</button>
+<div id="error" class="error"></div>
+</div>
+
+<br>
+
+<!-- RESULT CARD -->
+<div class="grid">
+  <div class="card">
+    <div id="output">Result = —</div>
+
+    <div id="insight" class="insight"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function addDays(date, days){
+  let d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function formatDate(d){
+  return d.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});
+}
+
+function calculatePregnancy(){
+  error.innerText="";
+  output.innerHTML="Result = —";
+  insight.innerHTML="";
+
+  let method = methodSel.value;
+  let inputDate = new Date(dateInput.value);
+
+  if(!dateInput.value){
+    error.innerText="Please select a valid date.";
+    return;
+  }
+
+  let today = new Date();
+  let lmp, dueDate;
+
+  if(method==="lmp"){
+    lmp = inputDate;
+    dueDate = addDays(lmp, 280); // 40 weeks
+  }else{
+    dueDate = inputDate;
+    lmp = addDays(dueDate, -280);
+  }
+
+  if(today < lmp){
+    error.innerText="The selected date indicates pregnancy has not started yet.";
+    return;
+  }
+
+  let daysPregnant = Math.floor((today - lmp) / (1000*60*60*24));
+  let weeks = Math.floor(daysPregnant / 7);
+  let days = daysPregnant % 7;
+
+  let trimester =
+    weeks < 13 ? "First trimester" :
+    weeks < 27 ? "Second trimester" :
+    "Third trimester";
+
+  let conceptionStart = addDays(lmp, 10);
+  let conceptionEnd = addDays(lmp, 14);
+
+  output.innerHTML = `
+  <table>
+    <tr><td><b>Estimated Due Date</b></td><td>${formatDate(dueDate)}</td></tr>
+    <tr><td>Gestational Age</td><td>${weeks} weeks ${days} days</td></tr>
+    <tr><td>Current Trimester</td><td>${trimester}</td></tr>
+    <tr><td>Estimated Conception Window</td><td>${formatDate(conceptionStart)} – ${formatDate(conceptionEnd)}</td></tr>
+    <tr><td>Pregnancy Progress</td><td>${Math.min((weeks/40*100),100).toFixed(1)}%</td></tr>
+  </table>`;
+
+  insight.innerHTML = `
+  <strong>How to understand this:</strong><br>
+  Pregnancy is calculated as a 40-week (280-day) period starting from the first day of the last menstrual period (LMP), which is the medical standard used worldwide.
+  <br><br>
+  <strong>Important:</strong> Ovulation, implantation, and cycle length can vary. Ultrasound dating by a healthcare provider is the most accurate method.
+  `;
+}
+
+const methodSel = document.getElementById("method");
+const dateInput = document.getElementById("dateInput");
+const error = document.getElementById("error");
+const output = document.getElementById("output");
+const insight = document.getElementById("insight");
+</script>
+
+</body>
+</html>
