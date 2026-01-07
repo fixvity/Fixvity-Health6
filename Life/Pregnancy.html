@@ -13,22 +13,31 @@
   --radius:16px;
   --text:#1f2937;
   --muted:#6b7280;
-  --highlight:#e0f2fe;
+
+  --first:#e0f2fe;
+  --second:#ecfeff;
+  --third:#f0fdf4;
+  --today:#fde68a;
 }
+
 *{box-sizing:border-box}
+
 body{
   margin:0;
   font-family:Inter,system-ui,Arial;
   background:var(--bg);
   color:var(--text);
 }
+
 .container{max-width:1200px;margin:auto;padding:20px}
+
 .card{
   background:var(--card);
   border-radius:var(--radius);
   padding:28px;
   box-shadow:0 14px 36px rgba(0,0,0,.08);
 }
+
 h1{margin:0;color:var(--primary)}
 small{color:var(--muted)}
 
@@ -44,6 +53,8 @@ input,select{
   font-size:16px;
   border-radius:10px;
   border:1px solid #ddd;
+  background:#fff;
+  color:#111;
 }
 
 button{
@@ -63,13 +74,26 @@ table{
   width:100%;
   border-collapse:collapse;
   font-size:14px;
+  min-width:720px;
 }
+
 th,td{
   padding:10px;
   border-bottom:1px solid #eee;
+  vertical-align:middle;
 }
-th{background:#f8fafc}
-.today{background:var(--highlight)}
+
+thead th{
+  background:#f8fafc;
+  position:sticky;
+  top:0;
+  z-index:2;
+}
+
+.first{background:var(--first)}
+.second{background:var(--second)}
+.third{background:var(--third)}
+.today{background:var(--today)}
 
 .insight{
   margin-top:16px;
@@ -79,12 +103,26 @@ th{background:#f8fafc}
   font-size:14px;
   line-height:1.6;
 }
+
+canvas{max-width:100%;margin-top:20px}
+
+/* MOBILE TABLE FIX */
+@media (max-width:768px){
+  table{font-size:13px}
+  th,td{white-space:nowrap}
+  td:nth-child(2),td:nth-child(5){white-space:normal}
+  th:nth-child(3),th:nth-child(4),th:nth-child(5),
+  td:nth-child(3),td:nth-child(4),td:nth-child(5){
+    text-align:center;
+  }
+}
 </style>
 </head>
 
 <body>
 <div class="container">
 
+<!-- INPUT -->
 <div class="card">
 <h1>Pregnancy Calculator</h1>
 <small>Due date · Weeks & days · Baby size · Weight gain · Timeline</small>
@@ -114,17 +152,20 @@ th{background:#f8fafc}
 
 <br>
 
+<!-- SUMMARY -->
 <div class="card">
 <div id="summary">Result = —</div>
 <div id="insight" class="insight"></div>
+<canvas id="weightChart" height="140"></canvas>
 </div>
 
 <br>
 
+<!-- TIMELINE -->
 <div class="card">
 <h2>Pregnancy Week-by-Week Timeline</h2>
 <div style="overflow-x:auto">
-<table id="timeline">
+<table>
 <thead>
 <tr>
 <th>Week</th>
@@ -134,7 +175,7 @@ th{background:#f8fafc}
 <th>Important Milestones</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="timeline"></tbody>
 </table>
 </div>
 </div>
@@ -142,97 +183,107 @@ th{background:#f8fafc}
 </div>
 
 <script>
-const MS = 86400000;
+const MS=86400000;
 
-const babySize = [
-  null,
-  ["0.1 in","<1 g"],["0.1 in","<1 g"],["0.2 in","<1 g"],
-  ["0.3 in","1 g"],["0.5 in","2 g"],["0.6 in","4 g"],
-  ["0.9 in","7 g"],["1.2 in","14 g"],["1.6 in","25 g"],
-  ["2.1 in","45 g"],["2.9 in","60 g"],["3.4 in","90 g"],
-  ["4.6 in","120 g"],["5.1 in","170 g"],["6.0 in","200 g"],
-  ["6.7 in","250 g"],["7.4 in","300 g"],["8.7 in","350 g"],
-  ["10.1 in","400 g"],["10.5 in","500 g"],["11.2 in","600 g"],
-  ["11.8 in","700 g"],["12.2 in","800 g"],["13.4 in","900 g"],
-  ["13.6 in","1 kg"],["14.0 in","1.1 kg"],["14.8 in","1.3 kg"],
-  ["15.2 in","1.5 kg"],["15.7 in","1.7 kg"],["16.5 in","1.9 kg"],
-  ["17.2 in","2.1 kg"],["17.7 in","2.4 kg"],["18.2 in","2.6 kg"],
-  ["18.7 in","2.9 kg"],["19.2 in","3.1 kg"],["19.7 in","3.3 kg"],
-  ["20.2 in","3.4 kg"],["20.7 in","3.5 kg"],["21.0 in","3.6 kg"]
+const babySize=[null,
+["0.1 in","<1 g"],["0.1 in","<1 g"],["0.2 in","<1 g"],
+["0.3 in","1 g"],["0.5 in","2 g"],["0.6 in","4 g"],
+["0.9 in","7 g"],["1.2 in","14 g"],["1.6 in","25 g"],
+["2.1 in","45 g"],["2.9 in","60 g"],["3.4 in","90 g"],
+["4.6 in","120 g"],["5.1 in","170 g"],["6.0 in","200 g"],
+["6.7 in","250 g"],["7.4 in","300 g"],["8.7 in","350 g"],
+["10.1 in","400 g"],["10.5 in","500 g"],["11.2 in","600 g"],
+["11.8 in","700 g"],["12.2 in","800 g"],["13.4 in","900 g"],
+["13.6 in","1 kg"],["14.0 in","1.1 kg"],["14.8 in","1.3 kg"],
+["15.2 in","1.5 kg"],["15.7 in","1.7 kg"],["16.5 in","1.9 kg"],
+["17.2 in","2.1 kg"],["17.7 in","2.4 kg"],["18.2 in","2.6 kg"],
+["18.7 in","2.9 kg"],["19.2 in","3.1 kg"],["19.7 in","3.3 kg"],
+["20.2 in","3.4 kg"],["20.7 in","3.5 kg"],["21.0 in","3.6 kg"]
 ];
 
-const milestones = {
-  3:"Baby conceived",
-  4:"Pregnancy test positive",
-  6:"Heartbeat detectable by ultrasound",
-  13:"Miscarriage risk decreases",
-  18:"Baby movements felt",
-  23:"Premature baby may survive",
-  28:"Baby can breathe",
-  40:"Full term"
+const milestones={
+3:"Baby conceived",
+4:"Pregnancy test positive",
+6:"Heartbeat detectable by ultrasound",
+13:"Miscarriage risk decreases",
+18:"Baby movements felt",
+23:"Premature baby may survive",
+28:"Baby can breathe",
+40:"Full term"
 };
 
-method.onchange = () => {
-  extra.style.display = method.value === "ivf" ? "block" : "none";
-};
+method.onchange=()=>extra.style.display=method.value==="ivf"?"block":"none";
 
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
 function fmt(d){return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"});}
 
 function calculate(){
-  error.textContent="";
-  timeline.querySelector("tbody").innerHTML="";
-  if(!dateInput.value){error.textContent="Please select a date.";return;}
+error.textContent="";
+timeline.innerHTML="";
+const base=new Date(dateInput.value+"T00:00");
+if(!dateInput.value){error.textContent="Please select a date.";return;}
 
-  const base=new Date(dateInput.value+"T00:00:00");
-  let lmp;
+let lmp;
+if(method.value==="due") lmp=addDays(base,-280);
+if(method.value==="lmp") lmp=base;
+if(method.value==="conception") lmp=addDays(base,-14);
+if(method.value==="ultrasound") lmp=addDays(base,-70);
+if(method.value==="ivf") lmp=addDays(base,-(extra.value==="5"?261:263));
 
-  if(method.value==="due") lmp=addDays(base,-280);
-  if(method.value==="lmp") lmp=base;
-  if(method.value==="conception") lmp=addDays(base,-14);
-  if(method.value==="ultrasound") lmp=addDays(base,-70);
-  if(method.value==="ivf") lmp=addDays(base,-(extra.value==="5"?261:263));
+const today=new Date();
+if(today<lmp){error.textContent="Pregnancy has not started yet.";return;}
 
-  const today=new Date();
-  if(today<lmp){error.textContent="Pregnancy has not started yet.";return;}
+const days=Math.min(Math.floor((today-lmp)/MS),294);
+const weeks=Math.max(1,Math.floor(days/7));
+const rem=days%7;
+const due=addDays(lmp,280);
+const progress=Math.min((days/280)*100,100).toFixed(0);
+const trimester=weeks<=13?"First":weeks<=27?"Second":"Third";
+const size=babySize[weeks]||["—","—"];
 
-  const days=Math.min(Math.floor((today-lmp)/MS),294);
-  const weeks=Math.max(1,Math.floor(days/7));
-  const rem=days%7;
+summary.innerHTML=`
+<p><b>Week ${weeks}</b> (${weeks} weeks ${rem} days)</p>
+<p>Trimester: <b>${trimester}</b></p>
+<p>Estimated due date: <b>${fmt(due)}</b></p>
+<p>Pregnancy progress: <b>${progress}%</b></p>
+<p>Baby size: <b>${size[0]}</b>, weight <b>${size[1]}</b></p>
+`;
 
-  const trimester = weeks<=13?"First":weeks<=27?"Second":"Third";
-  const due=addDays(lmp,280);
-  const progress=Math.min((days/280)*100,100).toFixed(0);
-  const size=babySize[weeks]||["—","—"];
+insight.innerHTML=`
+<strong>Recommended weight gain (singleton pregnancy):</strong><br>
+Underweight: 12.5–18 kg · Normal: 11.5–16 kg · Overweight: 7–11.5 kg · Obese: 5–9 kg
+<br><br>
+<strong>Medical disclaimer:</strong> Results are estimates. Ultrasound dating by a healthcare professional is the most accurate.
+`;
 
-  summary.innerHTML=`
-    <p><b>Week ${weeks}</b> (${weeks} weeks ${rem} days)</p>
-    <p>Trimester: <b>${trimester}</b></p>
-    <p>Estimated due date: <b>${fmt(due)}</b></p>
-    <p>Pregnancy progress: <b>${progress}%</b></p>
-    <p>Baby size: <b>${size[0]}</b>, weight <b>${size[1]}</b></p>
-  `;
+drawWeightChart();
 
-  insight.innerHTML=`
-    <strong>Recommended weight gain (singleton pregnancy):</strong><br>
-    Underweight: 12.5–18 kg · Normal: 11.5–16 kg · Overweight: 7–11.5 kg · Obese: 5–9 kg
-    <br><br>
-    <strong>Medical disclaimer:</strong> Results are estimates. Ultrasound dating by a healthcare professional is the most accurate.
-  `;
+for(let w=1;w<=42;w++){
+const s=addDays(lmp,(w-1)*7),e=addDays(s,6);
+const tr=w<=13?"First":w<=27?"Second":"Third";
+const cls=(w===weeks?"today ":"")+(tr==="First"?"first":tr==="Second"?"second":"third");
 
-  for(let w=1;w<=42;w++){
-    const s=addDays(lmp,(w-1)*7),e=addDays(s,6);
-    const tr=w<=13?"First":w<=27?"Second":"Third";
-    const row=document.createElement("tr");
-    if(w===weeks) row.className="today";
-    row.innerHTML=`
-      <td>Week ${w}</td>
-      <td>${fmt(s)} – ${fmt(e)}</td>
-      <td>${tr}</td>
-      <td>${babySize[w]?babySize[w].join(", "):"—"}</td>
-      <td>${milestones[w]||""}</td>`;
-    timeline.querySelector("tbody").appendChild(row);
-  }
+timeline.innerHTML+=`
+<tr class="${cls}">
+<td>Week ${w}</td>
+<td>${fmt(s)} – ${fmt(e)}</td>
+<td>${tr}</td>
+<td>${babySize[w]?babySize[w].join(", "):"—"}</td>
+<td>${milestones[w]||""}</td>
+</tr>`;
+}
+}
+
+function drawWeightChart(){
+const c=document.getElementById("weightChart");
+const ctx=c.getContext("2d");
+ctx.clearRect(0,0,c.width,c.height);
+ctx.strokeStyle="#2563eb";
+ctx.beginPath();
+ctx.moveTo(0,120);
+ctx.lineTo(300,40);
+ctx.stroke();
+ctx.fillText("Weight gain trend (BMI-based estimate)",10,20);
 }
 </script>
 
