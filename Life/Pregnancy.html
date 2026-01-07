@@ -57,6 +57,12 @@ input,select{
   color:#111;
 }
 
+input[type="date"]{
+  appearance:auto;
+  -webkit-appearance:auto;
+  color:#111;
+}
+
 button{
   width:100%;
   padding:18px;
@@ -81,6 +87,12 @@ th,td{
   padding:10px;
   border-bottom:1px solid #eee;
   vertical-align:middle;
+  text-align:center;
+}
+
+th:first-child,td:first-child,
+th:nth-child(2),td:nth-child(2){
+  text-align:left;
 }
 
 thead th{
@@ -111,10 +123,6 @@ canvas{max-width:100%;margin-top:20px}
   table{font-size:13px}
   th,td{white-space:nowrap}
   td:nth-child(2),td:nth-child(5){white-space:normal}
-  th:nth-child(3),th:nth-child(4),th:nth-child(5),
-  td:nth-child(3),td:nth-child(4),td:nth-child(5){
-    text-align:center;
-  }
 }
 </style>
 </head>
@@ -220,10 +228,11 @@ function fmt(d){return d.toLocaleDateString(undefined,{month:"short",day:"numeri
 function calculate(){
 error.textContent="";
 timeline.innerHTML="";
-const base=new Date(dateInput.value+"T00:00");
 if(!dateInput.value){error.textContent="Please select a date.";return;}
 
+const base=new Date(dateInput.value+"T00:00");
 let lmp;
+
 if(method.value==="due") lmp=addDays(base,-280);
 if(method.value==="lmp") lmp=base;
 if(method.value==="conception") lmp=addDays(base,-14);
@@ -280,10 +289,10 @@ const ctx=c.getContext("2d");
 ctx.clearRect(0,0,c.width,c.height);
 ctx.strokeStyle="#2563eb";
 ctx.beginPath();
-ctx.moveTo(0,120);
-ctx.lineTo(300,40);
+ctx.moveTo(20,120);
+ctx.lineTo(320,40);
 ctx.stroke();
-ctx.fillText("Weight gain trend (BMI-based estimate)",10,20);
+ctx.fillText("Weight gain trend (BMI-based estimate)",20,20);
 }
 </script>
 
